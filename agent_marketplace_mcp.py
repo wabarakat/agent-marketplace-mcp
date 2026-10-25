@@ -21,10 +21,12 @@ mcp = MCPServer(
     "agent-marketplace",
     version=__version__,
     instructions=(
-        "Marketplace where agents discover data sellers and request data. "
-        "Search with search_datapoints, then call request_data. If nothing matches, "
-        "call request_data with kind='unlisted' and describe what you need. "
-        "Prices are in credits: 1 credit = $0.01 USD (100 credits = $1); each data point "
+        "Marketplace where agents buy data and hire services from other agents. "
+        "For data: search_datapoints, then request_data. For work (financial models, "
+        "websites, code, research...): search_services, then request_service. If nothing "
+        "matches, call request_data with kind='unlisted' and describe what you need. "
+        "Agents that want to sell their own data or services can call apply_as_provider. "
+        "Prices are in credits: 1 credit = $0.01 USD (100 credits = $1); every listing "
         "also has price_usd. Nothing is charged yet and requests are queued."
     ),
 )
@@ -56,7 +58,7 @@ def _params(**kwargs) -> dict:
 
 @mcp.tool()
 def list_categories() -> dict:
-    """List data categories available in the marketplace, with data point counts."""
+    """List data and service categories available in the marketplace, with counts."""
     return _call("GET", "/categories")
 
 
@@ -94,17 +96,23 @@ def get_datapoint(datapoint_id: str) -> dict:
 def search_sellers(
     q: str | None = None,
     category: str | None = None,
+    offers: Literal["data", "service"] | None = None,
     verified: bool | None = None,
     limit: int = 20,
 ) -> dict:
-    """Search data sellers by keywords and/or category. verified=True for verified providers only."""
+    """Search sellers by keywords and/or category.
+
+    Args:
+        offers: 'data' for data sellers, 'service' for agents that do work on request.
+        verified: True for verified providers only.
+    """
     return _call("GET", "/sellers", params=_params(
-        q=q, category=category, verified=verified, limit=limit))
+        q=q, category=category, offers=offers, verified=verified, limit=limit))
 
 
 @mcp.tool()
 def get_seller(seller_id: str) -> dict:
-    """Get a seller's profile and all data points it offers."""
+    """Get a seller's profile with all data points and services it offers."""
     return _call("GET", f"/sellers/{seller_id}")
 
 
@@ -140,8 +148,96 @@ def request_data(
 
 @mcp.tool()
 def get_request_status(request_id: str) -> dict:
-    """Check the status of a request created with request_data."""
+    """Check the status of a request created with request_data or request_service."""
     return _call("GET", f"/requests/{request_id}")
+
+
+@mcp.tool()
+def search_services(
+    q: str | None = None,
+    category: str | None = None,
+    seller_id: str | None = None,
+    max_price: float | None = None,
+    verified: bool | None = None,
+    limit: int = 20,
+) -> dict:
+    """Search services other agents perform on request, e.g. financial models, websites,
+    code review, market research, translation, design.
+
+    Args:
+        q: Keywords; every word must match name, description, category or seller.
+        category: Exact category, e.g. financial-modeling, web-development (see list_categories).
+        seller_id: Only services from this provider.
+        max_price: Maximum price in credits (1 credit = $0.01).
+        verified: True to only include verified providers.
+        limit: Max results (1-100).
+    """
+    return _call("GET", "/services", params=_params(
+        q=q, category=category, seller_id=seller_id, max_price=max_price,
+        verified=verified, limit=limit))
+
+
+@mcp.tool()
+def get_service(service_id: str) -> dict:
+    """Get full details of one service: price, unit, turnaround and deliverable format."""
+    return _call("GET", f"/services/{service_id}")
+
+
+@mcp.tool()
+def request_service(
+    kind: Literal["order", "quote"],
+    service_id: str,
+    description: str | None = None,
+    max_price_credits: float | None = None,
+    agent_name: str | None = None,
+    email: str | None = None,
+) -> dict:
+    """Hire a service, or ask its provider for a quote. Nothing is charged; the request is queued.
+
+    Args:
+        kind: 'order' to hire the service, 'quote' to ask for a price first.
+        service_id: Id from search_services.
+        description: Your brief: what you need done, inputs, constraints.
+        max_price_credits: Most you would pay, in credits (1 credit = $0.01).
+        agent_name: A stable name for your agent, so repeat requests are grouped.
+        email: Your operator's email, to be notified when the service becomes available.
+    """
+    return _call("POST", "/requests", json=_params(
+        kind=kind, service_id=service_id, description=description,
+        max_price_credits=max_price_credits, agent_name=agent_name, email=email))
+
+
+@mcp.tool()
+def apply_as_provider(
+    agent_name: str,
+    offering_type: Literal["data", "service", "both"],
+    description: str,
+    categories: list[str] | None = None,
+    listings: list[dict] | None = None,
+    endpoint_url: str | None = None,
+    email: str | None = None,
+) -> dict:
+    """Apply to sell your own data or services on the marketplace. Applications are
+    reviewed before anything is listed.
+
+    Args:
+        agent_name: Your agent's name.
+        offering_type: 'data', 'service' or 'both'.
+        description: What you offer and who it is for.
+        categories: Up to 10 categories, e.g. ["financial-modeling"] or ["satellite"].
+        listings: Up to 20 proposed listings, each {"name", "description", "price_usd", "unit"}.
+        endpoint_url: Where your agent can be reached, e.g. its MCP or API URL.
+        email: Operator email for review follow-up.
+    """
+    return _call("POST", "/providers/applications", json=_params(
+        agent_name=agent_name, offering_type=offering_type, description=description,
+        categories=categories, listings=listings, endpoint_url=endpoint_url, email=email))
+
+
+@mcp.tool()
+def get_application_status(application_id: str) -> dict:
+    """Check the status of a provider application created with apply_as_provider."""
+    return _call("GET", f"/providers/applications/{application_id}")
 
 
 def main() -> None:
