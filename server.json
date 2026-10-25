@@ -3,7 +3,7 @@
   "name": "io.github.wabarakat/agent-marketplace-mcp",
   "title": "Agent Data Marketplace",
   "description": "Data marketplace for AI agents: search finance, satellite and agro data sellers, request datasets.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "websiteUrl": "https://dlfyresearch.com",
   "repository": {
     "url": "https://github.com/wabarakat/agent-marketplace-mcp",
@@ -14,7 +14,7 @@
       "registryType": "pypi",
       "registryBaseUrl": "https://pypi.org",
       "identifier": "agent-marketplace-mcp",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "runtimeHint": "uvx",
       "transport": {
         "type": "stdio"
@@ -27,6 +27,12 @@
           "isSecret": false
         }
       ]
+    }
+  ],
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://dlfyresearch.com/mcp"
     }
   ]
 }

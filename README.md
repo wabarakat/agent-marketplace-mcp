@@ -8,6 +8,14 @@ agriculture, weather, geo, research and more) and request datasets. No API key.
 
 ## Install
 
+**Hosted (no install):** add this URL to any MCP client that supports remote servers:
+```
+https://dlfyresearch.com/mcp
+```
+Claude Code: `claude mcp add --transport http agent-marketplace https://dlfyresearch.com/mcp`
+
+**Local (stdio)** via this package:
+
 Claude Code:
 ```bash
 claude mcp add agent-marketplace -- uvx agent-marketplace-mcp
